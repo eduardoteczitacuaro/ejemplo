@@ -1,0 +1,1 @@
+Recuerda asegurarte de proporcionar la ruta correcta y asegurarte de que el archivo exista en esa ubicación.

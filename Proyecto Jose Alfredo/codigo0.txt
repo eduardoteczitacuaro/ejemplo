@@ -1,0 +1,44 @@
+#include <ESP8266WiFi.h>
+
+const int emgDataPin = A0;
+const int inputPin = 4;  // Pin D2 corresponde a GPIO 4
+const int outputPin = 0; // Pin D3 corresponde a GPIO 0
+
+int emgValue = 0;
+
+const char* ssid = "IT Estudiantes";
+const char* password = "";
+
+void setup() {
+  Serial.begin(9600);
+
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Conectando a la red WiFi...");
+  }
+
+  Serial.println("Conexión WiFi establecida");
+
+  pinMode(inputPin, INPUT);
+  pinMode(outputPin, OUTPUT);
+}
+
+void loop() {
+  emgValue = analogRead(emgDataPin);
+
+  Serial.print("Valor EMG: ");
+  Serial.println(emgValue);
+
+  if (emgValue <= 0) {
+    Serial.println("El músculo está en reposo");
+  } else if (emgValue > 5) {
+    Serial.println("Se está realizando un esfuerzo");
+  }
+
+  int inputValue = digitalRead(inputPin);
+  digitalWrite(outputPin, inputValue);
+
+  delay(10);
+}

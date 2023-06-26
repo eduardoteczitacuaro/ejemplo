@@ -1,0 +1,21 @@
+1	45	Mayores de 40	7-9	Fatigado	7-9
+2	22	20-40	4-6	Movimiento	4-6
+3	19	Menores de 20	1-2	Reposo	1-2
+4	33	20-40	6-9	Esfuerzo	6-9
+5	50	Mayores de 40	10+	Fatigado	10+
+6	21	20-40	2-4	Movimiento	2-4
+7	18	Menores de 20	1-2	Reposo	1-2
+8	42	Mayores de 40	7-9	Fatigado	7-9
+9	23	20-40	4-6	Movimiento	4-6
+10	16	Menores de 20	1-2	Reposo	1-2
+...	...	...	...	...	...
+91	39	20-40	6-9	Esfuerzo	6-9
+92	48	Mayores de 40	10+	Fatigado	10+
+93	24	20-40	2-4	Movimiento	2-4
+94	17	Menores de 20	1-2	Reposo	1-2
+95	37	20-40	6-9	Esfuerzo	6-9
+96	52	Mayores de 40	10+	Fatigado	10+
+97	26	20-40	4-6	Movimiento	4-6
+98	19	Menores de 20	1-2	Reposo	1-2
+99	44	Mayores de 40	7-9	Fatigado	7-9
+100	28	20-40	4-6	Movimiento	4-6

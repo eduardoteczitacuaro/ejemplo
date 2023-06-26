@@ -1,0 +1,243 @@
+#include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+
+const char* ssid = "TP-Link_EDF8";
+const char* password = "70686395";
+
+const int emgPin = A0;
+
+WiFiServer server(80);
+
+const int MAX_DATA_POINTS = 10; // Número máximo de puntos de datos a mostrar
+struct EmgData {
+  unsigned long time;
+  int value;
+};
+EmgData emgData[MAX_DATA_POINTS]; // Array para almacenar los datos del sensor
+int dataCount = 0; // Contador de datos
+
+String userName = ""; // Variable para almacenar el nombre ingresado por el usuario
+
+void setup() {
+  Serial.begin(115200);
+  delay(10);
+
+  pinMode(emgPin, INPUT);
+
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Conectando a WiFi...");
+  }
+  Serial.println("Conectado a la red WiFi");
+
+  server.begin();
+  Serial.println("Servidor iniciado");
+
+  Serial.print("Dirección IP: ");
+  Serial.println(WiFi.localIP());
+}
+
+void loop() {
+  WiFiClient client = server.available();
+  if (!client) {
+    return;
+  }
+
+  while (!client.available()) {
+    delay(1);
+  }
+
+  String request = client.readStringUntil('\r');
+  client.flush();
+
+  if (request.indexOf("/emg") != -1) {
+    int emgValue = analogRead(emgPin);
+
+    // Agregar los nuevos datos al principio del array
+    for (int i = dataCount - 1; i >= 0; i--) {
+      emgData[i + 1] = emgData[i];
+    }
+    emgData[0].time = millis();
+    emgData[0].value = emgValue;
+
+    // Actualizar el contador de datos
+    if (dataCount < MAX_DATA_POINTS) {
+      dataCount++;
+    }
+
+    client.println("HTTP/1.1 200 OK");
+    client.println("Content-Type: application/json");
+    client.println("Access-Control-Allow-Origin: *");
+    client.println("");
+    client.println("[{\"success\": true}]");
+  }
+  else if (request.indexOf("/clear") != -1) {
+    clearData(); // Limpiar los valores del sensor EMG
+
+    client.println("HTTP/1.1 200 OK");
+    client.println("Content-Type: application/json");
+    client.println("Access-Control-Allow-Origin: *");
+    client.println("");
+    client.println("[{\"success\": true}]");
+  }
+  else if (request.indexOf("/name") != -1) {
+    // Obtener el nombre ingresado por el usuario
+    int startIndex = request.indexOf("name=") + 5;
+    int endIndex = request.indexOf(" HTTP");
+    userName = request.substring(startIndex, endIndex);
+
+    client.println("HTTP/1.1 200 OK");
+    client.println("Content-Type: application/json");
+    client.println("Access-Control-Allow-Origin: *");
+    client.println("");
+    client.println("[{\"success\": true}]");
+  }
+  else {
+    serveHTML(client);
+  }
+
+  delay(10);
+  client.stop();
+}
+
+void serveHTML(WiFiClient client) {
+  client.println("HTTP/1.1 200 OK");
+  client.println("Content-Type: text/html; charset=UTF-8"); // Establecer el conjunto de caracteres UTF-8
+  client.println("Access-Control-Allow-Origin: *");
+  client.println("");
+
+  client.println("<!DOCTYPE html>");
+  client.println("<html>");
+  client.println("<head>");
+  client.println("<title>Sensor EMG</title>");
+  client.println("<meta charset=\"UTF-8\">"); // Agregar la etiqueta meta para especificar el conjunto de caracteres
+  client.println("<link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css\">");
+  client.println("<style>");
+  client.println("body { background-color: #E1F5FE; }");
+  client.println("</style>");
+  client.println("</head>");
+  client.println("<body>");
+  client.println("<div class=\"container\">");
+  client.println("<h1 class=\"center-align\">Valores del sensor EMG</h1>");
+
+  // Agregar formulario para ingresar el nombre
+  client.println("<form action=\"/name\" method=\"GET\">");
+  client.println("<div class=\"input-field\">");
+  client.println("<input type=\"text\" name=\"name\" required>");
+  client.println("<label for=\"name\">Ingrese su nombre</label>");
+  client.println("</div>");
+  client.println("<button type=\"submit\" class=\"waves-effect waves-light btn\">Enviar</button>");
+  client.println("</form>");
+
+  client.println("<table class=\"striped\">");
+  client.println("<thead>");
+  client.println("<tr>");
+  client.println("<th>#</th>"); // Encabezado para el número consecutivo
+  client.println("<th>Tiempo</th>");
+  client.println("<th>Valor</th>");
+  client.println("</tr>");
+  client.println("</thead>");
+  client.println("<tbody>");
+
+  // Mostrar los datos del sensor en la tabla
+  int sum = 0; // Variable para almacenar la suma de los valores
+  for (int i = 0; i < dataCount; i++) {
+    client.println("<tr>");
+    client.print("<td>");
+    client.print(i + 1); // Mostrar el valor consecutivo
+    client.println("</td>");
+    client.print("<td>");
+    client.print(emgData[i].time);
+    client.println("</td>");
+    client.print("<td>");
+    client.print(emgData[i].value);
+    client.println("</td>");
+    client.println("</tr>");
+
+    sum += emgData[i].value; // Calcular la suma de los valores
+  }
+
+  client.println("</tbody>");
+  client.println("</table>");
+
+  if (dataCount > 0) {
+    float average = static_cast<float>(sum) / dataCount; // Calcular el promedio
+    client.print("<p>Nombre: ");
+    client.print(userName); // Mostrar el nombre ingresado por el usuario
+    client.println("</p>");
+    client.print("<p>Promedio general: ");
+    client.print(average, 2); // Mostrar el promedio con 2 decimales
+    client.println("</p>");
+
+    // Verificar el estado del músculo en función del promedio
+    client.print("<p>Estado del músculo: ");
+    if (average >= 0 && average <= 0.4) {
+      client.print("El músculo está en reposo");
+    } else if (average >= 0.5 && average <= 2) {
+      client.print("El músculo está en movimiento");
+    } else {
+      client.print("El músculo está en riesgo");
+    }
+    client.println("</p>");
+  }
+
+  // Agregar el botón para limpiar los valores
+  client.println("<button onclick=\"clearValues()\" class=\"waves-effect waves-light btn\">Limpiar valores</button>");
+
+  client.println("</div>");
+  client.println("<script src=\"https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js\"></script>");
+  client.println("<script>");
+  client.println("setInterval(function() {");
+  client.println("fetch('/emg')");
+  client.println(".then(function(response) {");
+  client.println("return response.json();");
+  client.println("})");
+  client.println(".then(function(data) {");
+  client.println("if (data[0].success) {");
+  client.println("updateTable();");
+  client.println("}");
+  client.println("});");
+  client.println("}, 1000);");
+  client.println("function updateTable() {");
+  client.println("fetch('/emg')");
+  client.println(".then(function(response) {");
+  client.println("return response.json();");
+  client.println("})");
+  client.println(".then(function(data) {");
+  client.println("var tableBody = document.querySelector('tbody');");
+  client.println("tableBody.innerHTML = '';");
+  client.println("data.forEach(function(item) {");
+  client.println("var row = document.createElement('tr');");
+  client.println("var indexCell = document.createElement('td');");
+  client.println("indexCell.textContent = item.index;");
+  client.println("row.appendChild(indexCell);");
+  client.println("var timeCell = document.createElement('td');");
+  client.println("timeCell.textContent = item.time;");
+  client.println("row.appendChild(timeCell);");
+  client.println("var valueCell = document.createElement('td');");
+  client.println("valueCell.textContent = item.value;");
+  client.println("row.appendChild(valueCell);");
+  client.println("tableBody.appendChild(row);");
+  client.println("});");
+  client.println("});");
+  client.println("}");
+  client.println("function clearValues() {");
+  client.println("fetch('/clear')");
+  client.println(".then(function(response) {");
+  client.println("return response.json();");
+  client.println("})");
+  client.println(".then(function(data) {");
+  client.println("if (data[0].success) {");
+  client.println("updateTable();");
+  client.println("}");
+  client.println("});");
+  client.println("}");
+  client.println("</script>");
+  client.println("</body>");
+  client.println("</html>");
+}
+
+void clearData() {
+  dataCount = 0; // Reiniciar el contador de datos
+}

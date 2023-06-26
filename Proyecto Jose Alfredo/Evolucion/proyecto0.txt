@@ -1,0 +1,18 @@
+const int emgDataPin = A0;  // Pin analógico al que está conectado el sensor EMG
+
+void setup() {
+  Serial.begin(9600);
+}
+
+void loop() {
+  // Leer el valor analógico del sensor EMG
+  int emgValue = analogRead(emgDataPin);
+
+  // Mostrar el valor leído en el monitor serial
+  Serial.print("Valor EMG: ");
+  Serial.println(emgValue);
+
+  // Realizar aquí cualquier otra operación o cálculo con el valor EMG
+  
+  delay(100);  // Pequeña pausa entre lecturas
+}
